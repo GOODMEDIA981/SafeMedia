@@ -1,0 +1,7 @@
+{
+  "name": "SAFEMEDIA",
+  "description": "AI-powered media screener and parental guidance chatbot",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
