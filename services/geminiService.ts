@@ -1,8 +1,33 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { MediaAnalysis } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Lazy initialization to prevent crashes on startup if env is missing
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    // STRATEGY 1: Check the variable injected by Vite's 'define' config (process.env.API_KEY)
+    // STRATEGY 2: Check standard Vite env vars (import.meta.env.VITE_API_KEY)
+    // STRATEGY 3: Check standard Vite env vars (import.meta.env.API_KEY)
+    let apiKey = process.env.API_KEY;
+    
+    // Fallbacks for robustness
+    if (!apiKey && import.meta && import.meta.env) {
+        apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY;
+    }
+    
+    if (!apiKey) {
+      console.error("API_KEY is missing. Tried process.env.API_KEY and import.meta.env.VITE_API_KEY");
+      throw new Error("Configuration Error: API Key is missing. Please check your Vercel Environment Variables.");
+    }
+    
+    // Sanitize: Remove quotes and whitespace that sometimes get copied accidentally
+    const cleanKey = apiKey.replace(/["']/g, "").trim();
+
+    aiInstance = new GoogleGenAI({ apiKey: cleanKey });
+  }
+  return aiInstance;
+};
 
 const analysisSchema: Schema = {
   type: Type.OBJECT,
@@ -55,6 +80,7 @@ const analysisSchema: Schema = {
 
 export const analyzeMedia = async (query: string): Promise<MediaAnalysis> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Analyze the following media: "${query}". 

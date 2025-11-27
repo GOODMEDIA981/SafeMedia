@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { ShieldLogo } from './components/ShieldLogo';
 import { PaymentGate } from './components/PaymentGate';
 import { AnalysisResult } from './components/AnalysisResult';
@@ -13,11 +13,65 @@ declare global {
   }
 }
 
-export default function App() {
-  // Initialize state from local storage so users don't have to pay again if they refresh
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: string;
+}
+
+// Error Boundary to prevent white screen of death
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error: error.message };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0a192f] flex items-center justify-center p-4 text-white text-center">
+          <div className="max-w-md bg-navy-800 p-8 rounded-xl border border-red-500/50">
+            <h1 className="text-2xl font-bold mb-4 text-red-400">Something went wrong</h1>
+            <p className="text-navy-200 mb-6">The application encountered an unexpected error.</p>
+            <code className="block bg-black/30 p-4 rounded text-xs text-left mb-6 font-mono text-red-200">
+              {this.state.error}
+            </code>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-blue-600 rounded hover:bg-blue-500 transition-colors"
+            >
+              Reload Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function SafemediaApp() {
+  // Initialize state from local storage safely
   const [isPaid, setIsPaid] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('safemedia_access') === 'true';
+      try {
+        return localStorage.getItem('safemedia_access') === 'true';
+      } catch (e) {
+        console.warn("LocalStorage access denied", e);
+        return false;
+      }
     }
     return false;
   });
@@ -32,12 +86,20 @@ export default function App() {
 
   // Check for Stripe redirect success parameter on mount
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    if (query.get('success') === 'true') {
-      setIsPaid(true);
-      localStorage.setItem('safemedia_access', 'true');
-      // Clean up the URL so the user doesn't see the query param
-      window.history.replaceState({}, document.title, window.location.pathname);
+    try {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get('success') === 'true') {
+        setIsPaid(true);
+        try {
+          localStorage.setItem('safemedia_access', 'true');
+        } catch (e) {
+          console.warn("Could not save to localStorage", e);
+        }
+        // Clean up the URL so the user doesn't see the query param
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.error("Error parsing URL parameters", e);
     }
   }, []);
 
@@ -63,8 +125,8 @@ export default function App() {
       setInputValue('');
       // Wait for render then scroll
       setTimeout(scrollToResult, 100);
-    } catch (err) {
-      setError("Could not analyze media. Please try again later or check your connection.");
+    } catch (err: any) {
+      setError(err.message || "Could not analyze media. Please check your API Key configuration.");
     } finally {
       setIsListeningLoading(false);
     }
@@ -94,8 +156,6 @@ export default function App() {
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInputValue(transcript);
-      // Optional: Auto-submit on voice end
-      // handleSubmit(); 
     };
 
     recognition.start();
@@ -213,5 +273,13 @@ export default function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <SafemediaApp />
+    </ErrorBoundary>
   );
 }

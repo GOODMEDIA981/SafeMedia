@@ -10,13 +10,6 @@ const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/eVq7sM9F69fz8Mr43Dfbq00";
 export const PaymentGate: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handlePaymentClick = () => {
-    setIsLoading(true);
-    // Redirect the current window to Stripe.
-    // Ensure you have configured Stripe to redirect back to your website URL + "?success=true"
-    window.location.href = STRIPE_PAYMENT_LINK;
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a192f] p-4">
       <div className="w-full max-w-md bg-navy-800 border border-navy-600 rounded-2xl shadow-2xl overflow-hidden relative">
@@ -57,10 +50,17 @@ export const PaymentGate: React.FC = () => {
             </ul>
           </div>
 
-          <button 
-            onClick={handlePaymentClick}
-            disabled={isLoading}
-            className="w-full bg-[#635BFF] hover:bg-[#5851E3] text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-900/30 flex items-center justify-center gap-2 group"
+          <a 
+            href={STRIPE_PAYMENT_LINK}
+            onClick={(e) => {
+              // Prevent double clicks if already loading
+              if (isLoading) {
+                e.preventDefault();
+                return;
+              }
+              setIsLoading(true);
+            }}
+            className="w-full bg-[#635BFF] hover:bg-[#5851E3] text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-900/30 flex items-center justify-center gap-2 group cursor-pointer text-center no-underline"
           >
             {isLoading ? (
               <>
@@ -78,7 +78,7 @@ export const PaymentGate: React.FC = () => {
                 </svg>
               </>
             )}
-          </button>
+          </a>
 
           <p className="mt-6 text-[10px] text-navy-400 uppercase tracking-widest flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-navy-500"></span>
