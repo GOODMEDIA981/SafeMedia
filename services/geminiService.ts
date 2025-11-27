@@ -6,25 +6,17 @@ let aiInstance: GoogleGenAI | null = null;
 
 const getAI = () => {
   if (!aiInstance) {
-    // STRATEGY 1: Check the variable injected by Vite's 'define' config (process.env.API_KEY)
-    // STRATEGY 2: Check standard Vite env vars (import.meta.env.VITE_API_KEY)
-    // STRATEGY 3: Check standard Vite env vars (import.meta.env.API_KEY)
-    let apiKey = process.env.API_KEY;
-    
-    // Fallbacks for robustness
-    if (!apiKey && import.meta && import.meta.env) {
-        apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY;
-    }
+    // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+    // Vite config handles the replacement of process.env.API_KEY with the actual value.
+    const apiKey = process.env.API_KEY;
     
     if (!apiKey) {
-      console.error("API_KEY is missing. Tried process.env.API_KEY and import.meta.env.VITE_API_KEY");
+      console.error("API_KEY is missing.");
       throw new Error("Configuration Error: API Key is missing. Please check your Vercel Environment Variables.");
     }
     
-    // Sanitize: Remove quotes and whitespace that sometimes get copied accidentally
-    const cleanKey = apiKey.replace(/["']/g, "").trim();
-
-    aiInstance = new GoogleGenAI({ apiKey: cleanKey });
+    // Initialize the client with the API key directly.
+    aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
 };
